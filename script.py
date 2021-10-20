@@ -1,0 +1,140 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.proxy import *
+import string
+import time
+import random
+import calendar
+
+
+def wait_for_element(driver, selector):
+    try:
+        action_element = WebDriverWait(driver, 15).until(ec.visibility_of_element_located((By.CSS_SELECTOR, selector)))
+        return action_element
+    except Exception as err:
+        print(err)
+
+
+def select_option(driver, select_tag_selector, option):
+    try:
+        select = Select(driver.find_element(By.CSS_SELECTOR, select_tag_selector))
+        select.select_by_visible_text(option)
+    except Exception as err:
+        print(err)
+
+
+# MAIN PAGE SELECTORS
+ok_cookies_selector = "#onetrust-accept-btn-handler"
+login_in_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_headerMargin__YO7ab > header > " \
+                    "nav.fc-header_mainNav__Ayaqb > a.fc-header_user__2WNPR"
+register_btn_selector = "#create_button_link"
+
+# 1 STEP SELECTORS
+screen_name_selector = "#screenName"
+email_selector = "#email"
+password_selector = "#newPassword"
+retype_password_selector = "#reenterPassword"
+firstname_selector = "#givenName"
+last_name_selector = "#surname"
+country_select = "#country"
+lang_select = "#preferredLanguage"
+birth_day_selector = "#dateOfBirth_day"
+birth_month_selector = "#dateOfBirth_month"
+birth_year_selector = "#dateOfBirth_year"
+first_step_next_btn = "#step1Next"
+
+# 2 STEP SELECTORS
+second_step_next_btn = "#step2Next"
+
+# 3 STEP SELECTORS
+scroll_div_selector = "#attributeList > ul > li.CheckboxMultiSelect.step3 > div.attrEntry > div.fifa_tos"
+third_step_next_btn = "#step3Next"
+
+# 4 STEP SELECTORS
+fourth_step_next_btn = "#step4Next"
+
+# 5 STEP SELECTORS
+send_code_btn = "#email_ver_but_send"
+
+
+def register_account(email, password,
+                     first_name, last_name,
+                     country, date_of_birth, proxy):
+    # INITIALIZE DRIVER
+    options = ChromeOptions()
+    options.add_argument("--ignore-certificate-errors")
+    options.add_argument("--unsafely-treat-insecure-origin-as-secure")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-web-security")
+    options.add_argument('--disable-gpu')
+    options.add_argument(f'--proxy-server={proxy}')
+    options.add_argument('--start-maximized')
+
+    driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
+
+    random_login = ''.join(random.choices(string.ascii_lowercase + string.digits, k=9))
+    bd_list = date_of_birth.split(".")
+    try:
+        # MAIN PAGE
+        driver.get("https://www.fifa.com")
+        time.sleep(random.triangular(2, 3))
+        wait_for_element(driver, ok_cookies_selector).click()
+        time.sleep(random.triangular(1, 3))
+        wait_for_element(driver, login_in_selector).click()
+        time.sleep(random.triangular(2, 6))
+        wait_for_element(driver, register_btn_selector).click()
+        time.sleep(random.triangular(1, 3))
+
+        # 1 STEP
+        wait_for_element(driver, screen_name_selector).send_keys(random_login)
+        time.sleep(random.triangular(2, 4))
+        driver.find_element(By.CSS_SELECTOR, email_selector).send_keys(email)
+        time.sleep(random.triangular(1, 3))
+        driver.find_element(By.CSS_SELECTOR, password_selector).send_keys(password)
+        time.sleep(random.triangular(1, 3))
+        driver.find_element(By.CSS_SELECTOR, retype_password_selector).send_keys(password)
+        time.sleep(random.triangular(1, 3))
+        driver.find_element(By.CSS_SELECTOR, firstname_selector).send_keys(first_name)
+        time.sleep(random.triangular(1, 3))
+        driver.find_element(By.CSS_SELECTOR, last_name_selector).send_keys(last_name)
+        time.sleep(random.triangular(1, 3))
+        select_option(driver, country_select, country)
+        time.sleep(random.triangular(1, 3))
+        select_option(driver, lang_select, "English")
+        time.sleep(random.triangular(1, 3))
+        select_option(driver, birth_day_selector, bd_list[0])
+        time.sleep(random.triangular(1, 3))
+        select_option(driver, birth_month_selector, calendar.month_name[int(bd_list[1])])
+        time.sleep(random.triangular(1, 3))
+        select_option(driver, birth_year_selector, bd_list[2])
+        time.sleep(random.triangular(1, 3))
+        driver.find_element(By.CSS_SELECTOR, first_step_next_btn).click()
+
+        # 2 STEP
+        wait_for_element(driver, second_step_next_btn).click()
+        time.sleep(random.triangular(2, 6))
+
+        # 3 STEP
+        scroll_div_element = wait_for_element(driver, scroll_div_selector)
+        driver.execute_script('arguments[0].scrollTop = arguments[0].scrollHeight', scroll_div_element)
+        time.sleep(random.triangular(2, 3))
+        driver.find_element(By.CSS_SELECTOR, third_step_next_btn).click()
+        time.sleep(random.triangular(1, 3))
+
+        # 4 STEP
+        wait_for_element(driver, fourth_step_next_btn).click()
+        time.sleep(random.triangular(1, 3))
+
+        # 5 STEP
+        # driver.find_element(By.CSS_SELECTOR, send_code_btn).click()
+
+        # if success return random_login
+    except Exception as err:
+        print(err)
+        driver.close()
+        driver.quit()
+        exit()
