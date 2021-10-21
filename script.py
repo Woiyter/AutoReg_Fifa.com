@@ -4,11 +4,39 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.proxy import *
 import string
 import time
 import random
 import calendar
+import poplib
+from email.parser import Parser
+from bs4 import BeautifulSoup
+
+
+def get_fifa_code(login, password, pop3_server):
+    try:
+        server = poplib.POP3_SSL(pop3_server)
+        server.set_debuglevel(1)
+        print(server.getwelcome().decode('utf-8'))
+        server.user(login)
+        server.pass_(password)
+        number_of_messages = len(server.list()[1])
+        msg_bytes = server.retr(number_of_messages)[1]
+        msg_content = b'\r\n'.join(msg_bytes).decode('utf-8')
+        msg = Parser().parsestr(msg_content)
+        who = msg.get("From")
+        if who.find("FIFA") > -1:
+            content = msg.get_payload(decode=True).decode("utf-8")
+            soup = BeautifulSoup(content, 'lxml')
+            span_with_code = soup.findAll("span", {"id": "BodyPlaceholder_UserVerificationEmailBodySentence2"})[0]
+            code = span_with_code.text.split(":")[1]
+            print(f'Код получен: {code}')
+            return code
+        else:
+            print("Неудалось найти письмо с кодом")
+    except Exception as err:
+        print("Ошибка во время получения кода")
+        print(err)
 
 
 def wait_for_element(driver, selector):
@@ -59,11 +87,18 @@ fourth_step_next_btn = "#step4Next"
 
 # 5 STEP SELECTORS
 send_code_btn = "#email_ver_but_send"
+input_code_selector = "#email_ver_input"
+verify_code_btn = "#email_ver_but_verify"
+continue_btn = "#continue"
+
+check_register_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_headerMargin__YO7ab > header > " \
+                          "nav.fc-header_mainNav__Ayaqb > a.fc-header_user__2WNPR > div"
 
 
-def register_account(email, password,
+def register_account(mail, password,
                      first_name, last_name,
-                     country, date_of_birth, proxy):
+                     country, date_of_birth,
+                     mail_password, pop3_server, proxy):
     # INITIALIZE DRIVER
     options = ChromeOptions()
     options.add_argument("--ignore-certificate-errors")
@@ -76,7 +111,9 @@ def register_account(email, password,
 
     driver = webdriver.Chrome(ChromeDriverManager().install(), options=options)
 
+    # GENERATING RANDOM LOGIN
     random_login = ''.join(random.choices(string.ascii_lowercase + string.digits, k=9))
+
     bd_list = date_of_birth.split(".")
     try:
         # MAIN PAGE
@@ -92,7 +129,7 @@ def register_account(email, password,
         # 1 STEP
         wait_for_element(driver, screen_name_selector).send_keys(random_login)
         time.sleep(random.triangular(2, 4))
-        driver.find_element(By.CSS_SELECTOR, email_selector).send_keys(email)
+        driver.find_element(By.CSS_SELECTOR, email_selector).send_keys(mail)
         time.sleep(random.triangular(1, 3))
         driver.find_element(By.CSS_SELECTOR, password_selector).send_keys(password)
         time.sleep(random.triangular(1, 3))
@@ -106,7 +143,7 @@ def register_account(email, password,
         time.sleep(random.triangular(1, 3))
         select_option(driver, lang_select, "English")
         time.sleep(random.triangular(1, 3))
-        select_option(driver, birth_day_selector, bd_list[0])
+        select_option(driver, birth_day_selector, str(int(bd_list[0])))
         time.sleep(random.triangular(1, 3))
         select_option(driver, birth_month_selector, calendar.month_name[int(bd_list[1])])
         time.sleep(random.triangular(1, 3))
@@ -130,11 +167,30 @@ def register_account(email, password,
         time.sleep(random.triangular(1, 3))
 
         # 5 STEP
-        # driver.find_element(By.CSS_SELECTOR, send_code_btn).click()
-
-        # if success return random_login
+        driver.find_element(By.CSS_SELECTOR, send_code_btn).click()
+        time.sleep(random.triangular(30, 45))
+        code = get_fifa_code(login=mail, password=mail_password, pop3_server=pop3_server)
+        time.sleep(random.triangular(3, 4))
+        driver.find_element(By.CSS_SELECTOR, input_code_selector).send_keys(code)
+        time.sleep(random.triangular(2, 3))
+        driver.find_element(By.CSS_SELECTOR, verify_code_btn).click()
+        time.sleep(random.triangular(3, 4))
+        driver.find_element(By.CSS_SELECTOR, continue_btn).click()
+        time.sleep(random.triangular(7, 10))
+        sing_in_name = wait_for_element(driver, check_register_selector)
+        if sing_in_name:
+            print("Регистрация успешна")
+            driver.close()
+            driver.quit()
+            return random_login
+        else:
+            print("Регистрация неудалась")
+            driver.close()
+            driver.quit()
+            exit()
     except Exception as err:
         print(err)
         driver.close()
         driver.quit()
         exit()
+
