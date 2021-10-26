@@ -8,32 +8,33 @@ import string
 import time
 import random
 import calendar
-import poplib
+import imaplib
 from email.parser import Parser
 from bs4 import BeautifulSoup
 
 
-def get_fifa_code(login, password, pop3_server):
+def get_fifa_code(login, password, imap_server):
     try:
-        server = poplib.POP3_SSL(pop3_server)
-        server.set_debuglevel(1)
-        print(server.getwelcome().decode('utf-8'))
-        server.user(login)
-        server.pass_(password)
-        number_of_messages = len(server.list()[1])
-        msg_bytes = server.retr(number_of_messages)[1]
-        msg_content = b'\r\n'.join(msg_bytes).decode('utf-8')
-        msg = Parser().parsestr(msg_content)
-        who = msg.get("From")
-        if who.find("FIFA") > -1:
-            content = msg.get_payload(decode=True).decode("utf-8")
+        server = imaplib.IMAP4_SSL(imap_server)
+        server.login(login, password)
+        server.select("inbox")
+        result, data = server.search(None, "ALL")
+        ids = data[0]
+        id_list = ids.split()
+        latest_email_id = id_list[-1]
+        result, data = server.fetch(latest_email_id, "(RFC822)")
+        raw_email = data[0][1]
+        email_message = raw_email.decode("utf-8")
+        parsed_mail = Parser().parsestr(email_message)
+        content = parsed_mail.get_payload(decode=True).decode("utf-8")
+        if content.find("FIFA") > -1:
             soup = BeautifulSoup(content, 'lxml')
             span_with_code = soup.findAll("span", {"id": "BodyPlaceholder_UserVerificationEmailBodySentence2"})[0]
             code = span_with_code.text.split(":")[1]
             print(f'Код получен: {code}')
             return code
         else:
-            print("Неудалось найти письмо от FIFA")
+            print("Не удалось найти письмо от FIFA")
     except Exception as err:
         print("Ошибка во время получения кода")
         print(err)
@@ -98,7 +99,7 @@ check_register_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_heade
 def register_account(mail, password,
                      first_name, last_name,
                      country, date_of_birth,
-                     mail_password, pop3_server, proxy):
+                     mail_password, imap_server, proxy):
     # INITIALIZE DRIVER
     options = ChromeOptions()
     options.add_argument("--ignore-certificate-errors")
@@ -169,7 +170,7 @@ def register_account(mail, password,
         # 5 STEP
         driver.find_element(By.CSS_SELECTOR, send_code_btn).click()
         time.sleep(random.triangular(30, 45))
-        code = get_fifa_code(login=mail, password=mail_password, pop3_server=pop3_server)
+        code = get_fifa_code(login=mail, password=mail_password, imap_server=imap_server)
         time.sleep(random.triangular(3, 4))
         driver.find_element(By.CSS_SELECTOR, input_code_selector).send_keys(code)
         time.sleep(random.triangular(2, 3))
