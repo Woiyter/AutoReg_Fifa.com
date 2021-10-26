@@ -33,7 +33,7 @@ def get_fifa_code(login, password, pop3_server):
             print(f'Код получен: {code}')
             return code
         else:
-            print("Неудалось найти письмо с кодом")
+            print("Неудалось найти письмо от FIFA")
     except Exception as err:
         print("Ошибка во время получения кода")
         print(err)
@@ -57,8 +57,8 @@ def select_option(driver, select_tag_selector, option):
 
 # MAIN PAGE SELECTORS
 ok_cookies_selector = "#onetrust-accept-btn-handler"
-login_in_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_headerMargin__YO7ab > header > " \
-                    "nav.fc-header_mainNav__Ayaqb > a.fc-header_user__2WNPR"
+login_in_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_headerMargin__YO7ab > header" \
+                    " > nav.fc-header_mainNav__Ayaqb > div > a:nth-child(2)"
 register_btn_selector = "#create_button_link"
 
 # 1 STEP SELECTORS
@@ -91,8 +91,8 @@ input_code_selector = "#email_ver_input"
 verify_code_btn = "#email_ver_but_verify"
 continue_btn = "#continue"
 
-check_register_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_headerMargin__YO7ab > header > " \
-                          "nav.fc-header_mainNav__Ayaqb > a.fc-header_user__2WNPR > div"
+check_register_selector = "#__next > div > div.d-none.d-lg-block.fc-layout_headerMargin__YO7ab > " \
+                          "header > nav.fc-header_mainNav__Ayaqb > div > a:nth-child(2) > div"
 
 
 def register_account(mail, password,
